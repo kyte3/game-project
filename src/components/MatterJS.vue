@@ -25,7 +25,6 @@ export default defineComponent({
     // LoadGame function calls two functions, HideButton and InitPhysics
     LoadGame() {
       this.HideButton()
-      this.InitPhysics()
     },
 
     // HideButton uses v-if to conditionally render the button (hide it) on click
@@ -33,10 +32,6 @@ export default defineComponent({
       this.ButtonStatus = !this.ButtonStatus;
     },
 
-    // InitPhysics starts matter.js renderer
-    InitPhysics() {
-
-    }
   },
 
   components: { PhysicsGame },
