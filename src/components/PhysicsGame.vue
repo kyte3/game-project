@@ -7,7 +7,10 @@
             <v-sheet :width="300" :height="600" color="black">
                 <v-container>
                     <v-col>
-                        <v-row style="height: 115px;" v-for="n in potCount" :key="n">
+                        <!--<div v-for="pot of pots" :key="pot.id">
+                            <PotInfo :pot="{pot}" />
+                        </div>-->
+                        <v-row style="height: 115px;" v-for="n in pots.length" :key="n">
                             <v-sheet rounded color="green" width="280" height="100">
                                 <v-row>
                                     <v-col cols="4">
@@ -21,10 +24,10 @@
                                         <v-row>Value</v-row>
                                     </v-col>
                                     <v-col cols="3">
-                                        <v-row class="custom-offset">{{ species[n - 1] }}</v-row>
-                                        <v-row>{{ age[n - 1] }} days</v-row>
-                                        <v-row>{{ health[n - 1] }}%</v-row>
-                                        <v-row>${{ value[n - 1] }}</v-row>
+                                        <v-row class="custom-offset">{{ }}</v-row>
+                                        <v-row>{{ }} days</v-row>
+                                        <v-row>{{ }}%</v-row>
+                                        <v-row>${{ }}</v-row>
                                     </v-col>
                                 </v-row>
                             </v-sheet>
@@ -36,20 +39,24 @@
     </div>
     <div ref="devcontrols">
         <v-sheet :height="200" :width="800" color="black" class="pa-6">
-            <v-btn variant="tonal" icon="mdi-pot" @click="generatePot()"></v-btn>
+            <v-btn @click="genPlant()" icon="mdi-pot" variant="tonal"></v-btn>
             <v-btn variant="tonal" icon="mdi-seed-plus" @click=""></v-btn>
-            <v-btn variant="tonal" icon="mdi-clock"></v-btn>
-            <p class="pa-4"> Pot count: {{ potCount }} Pot velocity: {{ potVelocity }}
+            <v-btn variant="tonal" icon="mdi-clock" @click="advanceTime()"></v-btn>
+            <Plant v-for="plant of pots" :key="plant.id" :growth-rate="plant.growthRate" :pot-i-d="plant.id"
+                @send-pot="potListener" />
+            <p class="pa-4"> Pot count: {{ pots.length }}
             </p>
         </v-sheet>
     </div>
 </template>
-  
+
 <script lang="ts">
 
 import { defineComponent } from 'vue';
 import Matter from 'matter-js';
+import Plant from './Plant.vue';
 
+//THIS IS WRONG, PLEASE FIX
 export default defineComponent({
     data() {
         return {
@@ -58,16 +65,27 @@ export default defineComponent({
             mouseConstraint: null as any,
             maxPots: 5,
             pots: [] as Array<any>,
-            species: [] as Array<any>,
-            age: [] as Array<any>,
-            health: [] as Array<any>,
-            value: [] as Array<any>,
-            potCount: 0,
             potVelocity: 0 as any,
+            makePlant: [
+                false,
+                false,
+                false,
+                false,
+            ],
         };
-    },
+    }, //WHAT ARE YOU THINKING?
     mounted() {
         this.initializePhysics();
+    },
+    beforeUnmount() {
+        if (this.engine) {
+            Matter.Engine.clear(this.engine);
+        }
+    },
+    watch: {
+        potCount() {
+            console.log(this.pots.length);
+        }
     },
     methods: {
         initializePhysics() {
@@ -112,7 +130,7 @@ export default defineComponent({
                     currentBody = currentBody.parent;
                 }
                 ;
-                //while (Matter.Body.getSpeed(currentBody) != 0) { };
+
                 Matter.Body.setPosition(currentBody, Matter.Vector.create(400, 100));
                 Matter.Body.setSpeed(currentBody, 0);
                 //console.log('Pot detected out of bounds, relocated');
@@ -122,64 +140,32 @@ export default defineComponent({
             // Run the renderer
             Matter.Render.run(this.render);
         },
-        generatePot() {
-            // Max number of concurrent pots
-            if (this.potCount >= this.maxPots) {
-                return null;
-            }
-            // Randomise Dimensions
-            let potWidth = Math.floor((Math.random() * 40) + 30);
-            let potHeight = Math.floor((Math.random() * 40) + 40);
-            let potSlope = Math.random() * -0.4;
-            // Create pot
-            const base = Matter.Bodies.trapezoid(400, 200, potWidth, potHeight, potSlope, {
-                render: {
-                    fillStyle: 'rgba(203,104,67,1)',
-                },
-                chamfer: {
-                    radius: 5
-                }
+        potListener(potData: any) {
+            console.log(potData);
+            // Add to world
+            console.log('logging before matter init', [potData]);
+            Matter.World.add(this.engine.world, [potData]);
+        },
+        genPlant() {
+            this.pots.push({
+                id: this.pots.length ?? 0 + 1,
+                growthRate: Math.random(),
             });
-            const top = Matter.Bodies.rectangle(400, 200 - potHeight / 2, potWidth * (1.1 + -potSlope), 20, {
-                render: {
-                    fillStyle: 'rgba(163,82,51,1)'
-                },
-                chamfer: {
-                    radius: 5
-                }
-            });
-            const pot = Matter.Body.create({
-                parts: [base, top],
-            });
-            // Add pot to pots array
-            this.pots[this.potCount] = pot;
-
-            // Add new plant to inventory
-            this.generatePlant([potWidth, potHeight, potSlope], this.potCount);
-
-            // Add the bodies to the world
-            Matter.World.add(this.engine.world, [pot]);
-            this.potCount += 1;
         },
         deletePot() {
-        },
-        generatePlant(potSize = [0, 0, 0], potID = -1) {
-            console.log(['Generating new plant', potID, potSize])
-
-            // Add plant to inventory
-            this.species[potID] = 'Oak';
-            this.age[potID] = 0;
-            this.value[potID] = 0;
-            this.health[potID] = 100;
-
-
         },
         highlightPlant(id = -1) {
             // Highlight clicked plant
             console.log([id, this.pots[id - 1]])
             Matter.Body.setVelocity(this.pots[id - 1], Matter.Vector.create(0, -5))
-        }
+        },
+        advanceTime() {
+
+        },
     },
+    components: {
+        Plant,
+    }
 })
 
 </script>
