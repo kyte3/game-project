@@ -2,19 +2,19 @@
   <div>
     <HelloWorld></HelloWorld>
 
-    <MatterJS></MatterJS>
+    <LoadScreen></LoadScreen>
   </div>
 </template>
 
 <script lang='ts'>
 import { defineComponent } from 'vue';
 import HelloWorld from './components/HelloWorld.vue';
-import MatterJS from './components/MatterJS.vue';
+import LoadScreen from './components/LoadScreen.vue';
 import PhysicsGame from './components/PhysicsGame.vue';
 
 
 //import stuff here
 
-export default defineComponent({ components: { MatterJS, PhysicsGame } });
+export default defineComponent({ components: { LoadScreen, PhysicsGame } });
 
 </script>
