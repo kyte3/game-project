@@ -14,7 +14,9 @@ export default defineComponent({
     },
     data() {
         return {
-            age: 0,
+            age: 0 as number,
+            potDimensions: [] as Array<number>, // [0]: base width, [1]: base height, [2]: top width, [3]: top height
+            colours: [] as Array<string>,   // [0]: new growth/sapling colour; [1]: mature colour; [2]: leaf colour
         }
     },
     mounted() {
@@ -49,8 +51,49 @@ export default defineComponent({
             });
 
             console.log('emitting event send pot');
+
+            // Save pot
+            this.potDimensions = [potWidth, potHeight, potWidth * (1.1 + -potSlope), 20];
+
             // send pot to parent
             this.$emit('send-pot', pot);
+        },
+        grow(plant: Matter.Body) {
+            if (this.age == 0) {
+                // Plant has not yet started growing; generate sapling
+                const seed = Math.random(); // Get it? Seed? Like for the randomness? And because it's a plant?
+                const seedB = seed * 10 - Math.floor(seed * 10);
+                const seedC = seed * 100 - Math.floor(seed * 100); // Hopefully a less strenuous way to get some extra variety than generating new random numbers
+
+                // Set colour palette
+                this.colours.push(`rgba(${seed * 20 + 90},${seed * 40 + 200},${seed * 70 + 20},1)`);  // Sapling colour
+                this.colours.push(`rgba(${seedB * 30 + 30},${seedB * 40 + 110},${seedB * 20 + 50},1)`);  // Mature colour
+                this.colours.push(`rgba(${seedC * 20 + 90},${seedC * 40 + 200},${seedC * 70 + 20},1)`);  // Leaf colour
+
+                // Determine sapling size
+                const saplingWidth = this.potDimensions[0] * (0.125 + (seed - 0.5) * 0.1);  // Sapling will be roughly 1/8th the width of the pot
+                const saplingHeight = this.potDimensions[1] * (0.2 + (seed - 0.5) * 0.1);   // Sap height around 1/5th pot height
+
+                // Define sapling vertices
+                const saplingVertices = [[{ x: 0, y: 0 }, { x: saplingWidth, y: 0 }, { x: saplingWidth / 2, y: saplingHeight }]] as Array<any>; // may need to offset vertices by plant.angle!
+
+                // Create the sapling body
+                const sapling = Matter.Bodies.fromVertices(plant.position.x, plant.position.y, saplingVertices, {
+                    render: {
+                        fillStyle: this.colours[0],
+                    }
+                });
+
+                // Assemble plant
+                const grownPlant = Matter.Body.create({
+                    parts: [plant, sapling]
+                });
+
+                this.$emit('send-grown', [grownPlant, this.potID])
+            };
+
+            this.age += 1;
+
         },
     }
 })

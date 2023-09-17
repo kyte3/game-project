@@ -18,14 +18,14 @@
                                             @click="highlightPlant(n)"></v-btn>
                                     </v-col>
                                     <v-col cols="3">
-                                        <v-row class="custom-offset">Species</v-row>
-                                        <v-row>Age</v-row>
-                                        <v-row>Health</v-row>
-                                        <v-row>Value</v-row>
+                                        <v-row class="custom-offset">Angle</v-row>
+                                        <v-row>Position</v-row>
+                                        <v-row>Unused</v-row>
+                                        <v-row>Unused</v-row>
                                     </v-col>
                                     <v-col cols="3">
-                                        <v-row class="custom-offset">{{ }}</v-row>
-                                        <v-row>{{ }} days</v-row>
+                                        <v-row class="custom-offset">{{ }} rads</v-row>
+                                        <v-row>{{ }}</v-row>
                                         <v-row>{{ }}%</v-row>
                                         <v-row>${{ }}</v-row>
                                     </v-col>
@@ -42,8 +42,8 @@
             <v-btn @click="genPlant()" icon="mdi-pot" variant="tonal"></v-btn>
             <v-btn variant="tonal" icon="mdi-seed-plus" @click=""></v-btn>
             <v-btn variant="tonal" icon="mdi-clock" @click="advanceTime()"></v-btn>
-            <Plant v-for="plant of pots" :key="plant.id" :growth-rate="plant.growthRate" :pot-i-d="plant.id"
-                @send-pot="potListener" />
+            <Plant v-for="plant of pots" :key="plant.id" :growth-rate="plant.growthRate" :pot-i-d="plant.id" :ref="`plants`"
+                @send-pot="potListener" @send-grown="growListener" />
             <p class="pa-4"> Pot count: {{ pots.length }}
             </p>
         </v-sheet>
@@ -56,24 +56,25 @@ import { defineComponent } from 'vue';
 import Matter from 'matter-js';
 import Plant from './Plant.vue';
 
-//THIS IS WRONG, PLEASE FIX
+type Pot = {
+    id: number;
+    growthRate: number;
+    body: any;
+}
+
 export default defineComponent({
+    components: {
+        Plant,
+    },
     data() {
         return {
             engine: null as any,
             render: null as any,
             mouseConstraint: null as any,
             maxPots: 5,
-            pots: [] as Array<any>,
-            potVelocity: 0 as any,
-            makePlant: [
-                false,
-                false,
-                false,
-                false,
-            ],
+            pots: [] as Array<Pot>,
         };
-    }, //WHAT ARE YOU THINKING?
+    },
     mounted() {
         this.initializePhysics();
     },
@@ -142,34 +143,51 @@ export default defineComponent({
         },
         potListener(potData: any) {
             console.log(potData);
+            // Add to object
+            this.pots[this.pots.length - 1].body = potData;
+
             // Add to world
-            console.log('logging before matter init', [potData]);
+            //console.log('logging before matter init', [potData]);
             Matter.World.add(this.engine.world, [potData]);
         },
         genPlant() {
+            if (this.pots.length > 4) {
+                return;
+            }
+
             this.pots.push({
                 id: this.pots.length ?? 0 + 1,
                 growthRate: Math.random(),
+                body: null,
             });
         },
         deletePot() {
         },
         highlightPlant(id = -1) {
             // Highlight clicked plant
-            console.log([id, this.pots[id - 1]])
-            Matter.Body.setVelocity(this.pots[id - 1], Matter.Vector.create(0, -5))
+            Matter.Body.setVelocity(this.pots[id - 1].body, Matter.Vector.create(0, -5))
         },
         advanceTime() {
+            // Trigger growth function in each Plant instance
+            const plantInstances = this.$refs[`plants`] as Array<any>;
+            plantInstances.forEach((item) => {
+                item.grow(this.pots[item.potID].body);
+            });
+        },
+        growListener(growData: any) {
+            console.log(growData);
 
+            // Update body in Matter engine
+            Matter.World.remove(this.engine.world, [this.pots[growData[1]].body]);
+            Matter.World.add(this.engine.world, [growData[0]]);
+
+            // Update pots array
+            this.pots[growData[1]].body = growData[0];
         },
     },
-    components: {
-        Plant,
-    }
 })
 
 </script>
-  
 
 <style scoped>
 .container {
