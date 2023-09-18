@@ -180,6 +180,7 @@ export default defineComponent({
             // Update body in Matter engine
             Matter.World.remove(this.engine.world, [this.pots[growData[1]].body]);
             Matter.World.add(this.engine.world, [growData[0]]);
+            Matter.Body.setAngle(growData[0], growData[2])
 
             // Update pots array
             this.pots[growData[1]].body = growData[0];
