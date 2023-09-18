@@ -18,15 +18,16 @@
                                             @click="highlightPlant(n)"></v-btn>
                                     </v-col>
                                     <v-col cols="3">
-                                        <v-row class="custom-offset">Angle</v-row>
-                                        <v-row>Position</v-row>
-                                        <v-row>Unused</v-row>
+                                        <v-row class="custom-offset">Age</v-row>
+                                        <v-row>Grow rate</v-row>
+                                        <v-row>Stage</v-row>
                                         <v-row>Unused</v-row>
                                     </v-col>
                                     <v-col cols="3">
-                                        <v-row class="custom-offset">{{ }} rads</v-row>
-                                        <v-row>{{ }}</v-row>
-                                        <v-row>{{ }}%</v-row>
+                                        <v-row class="custom-offset">{{ pots[n - 1].age }} days</v-row>
+                                        <v-row>{{ Math.round(pots[n - 1].growthRate * 100) / 100 }}</v-row>
+                                        <v-row v-if="pots[n - 1].mature">Mature</v-row>
+                                        <v-row v-if="!pots[n - 1].mature">Growing</v-row>
                                         <v-row>${{ }}</v-row>
                                     </v-col>
                                 </v-row>
@@ -40,7 +41,6 @@
     <div ref="devcontrols">
         <v-sheet :height="200" :width="800" color="black" class="pa-6">
             <v-btn @click="genPlant()" icon="mdi-pot" variant="tonal"></v-btn>
-            <v-btn variant="tonal" icon="mdi-seed-plus" @click=""></v-btn>
             <v-btn variant="tonal" icon="mdi-clock" @click="advanceTime()"></v-btn>
             <Plant v-for="plant of pots" :key="plant.id" :growth-rate="plant.growthRate" :pot-i-d="plant.id" :ref="`plants`"
                 @send-pot="potListener" @send-grown="growListener" />
@@ -57,9 +57,11 @@ import Matter from 'matter-js';
 import Plant from './Plant.vue';
 
 type Pot = {
+    age: number;
     id: number;
     growthRate: number;
     body: any;
+    mature: boolean;
 }
 
 export default defineComponent({
@@ -156,9 +158,11 @@ export default defineComponent({
             }
 
             this.pots.push({
+                age: 0,
                 id: this.pots.length ?? 0 + 1,
                 growthRate: Math.random(),
                 body: null,
+                mature: false,
             });
         },
         deletePot() {
@@ -172,10 +176,15 @@ export default defineComponent({
             const plantInstances = this.$refs[`plants`] as Array<any>;
             plantInstances.forEach((item) => {
                 item.grow(this.pots[item.potID].body);
+                this.pots[item.potID].age += 1;
             });
         },
         growListener(growData: any) {
-            console.log(growData);
+
+            if (growData[3]) {
+                this.pots[growData[1]].mature = growData[3];
+                return;
+            };
 
             // Update body in Matter engine
             Matter.World.remove(this.engine.world, [this.pots[growData[1]].body]);

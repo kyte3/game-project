@@ -14,11 +14,19 @@ type potProperties = {  // For flexibility in future
     topWidth: number,
     topHeight: number,
     palette: Array<string>
-}
+};
+
+type cell = {
+    vertices: Array<any>,
+    colour: string,
+};
 
 export default defineComponent({
     props: {
-        growthRate: Number as PropType<number>,
+        growthRate: {
+            type: Number as PropType<number>,
+            default: 0,
+        },
         potID: Number as PropType<number>,
     },
     data() {
@@ -32,7 +40,8 @@ export default defineComponent({
                 topHeight: 0,
                 palette: ['rgba(203,104,67,1)', 'rgba(163,82,51,1)']    // [1]: pot base colour, [1]: pot top colour, [2]: new growth/sapling colour, [3]: mature colour, [4]: leaf colour
             } as potProperties,
-            cells: [] as Array<Matter.Body>,    // Store new growth 'cells'
+            cells: [] as Array<cell>,    // Store new growth 'cells'
+            matureFlag: false as boolean,
         }
     },
     mounted() {
@@ -85,6 +94,14 @@ export default defineComponent({
             return pot; // Return pot only if called from grow function
         },
         grow(plant: Matter.Body) {
+
+            if (this.age > 10) {
+                // Plant is mature, no more growth
+                this.matureFlag = true;
+            };
+
+            let grownPlant = null as any;
+
             if (this.age == 0) {
                 // Plant has not yet started growing; generate sapling
                 const seed = Math.random(); // Get it? Seed? Like for the randomness? And because it's a plant?
@@ -104,19 +121,47 @@ export default defineComponent({
                 const saplingVertices = [[{ x: 0, y: 0 }, { x: saplingWidth, y: 0 }, { x: saplingWidth / 2, y: -saplingHeight }]] as Array<any>; // may need to offset vertices by plant.angle!
 
                 // Create the sapling body
-                const sapling = Matter.Bodies.fromVertices(plant.position.x, plant.position.y - this.potInstance.baseHeight / 2 - this.potInstance.topHeight / 2, saplingVertices, {
+                const sapling = Matter.Bodies.fromVertices(plant.position.x, plant.position.y - this.potInstance.baseHeight / 2 + saplingVertices[0][2].y / 3, saplingVertices, {
                     render: {
                         fillStyle: this.potInstance.palette[2],
                     }
                 });
-                this.cells.push(sapling);
+                this.cells.push({
+                    vertices: saplingVertices,
+                    colour: this.potInstance.palette[2],
+                });
 
                 // Assemble plant
-                const grownPlant = this.create(false, [sapling], [plant.position.x, plant.position.y]);
+                grownPlant = this.create(false, [sapling], [plant.position.x, plant.position.y]);
+            };
+            if (this.age > 0) {
 
-                this.$emit('send-grown', [grownPlant, this.potID, plant.angle])
+                let bodyList = [] as Array<Matter.Body>;
+
+                this.cells.forEach((item) => {
+                    item.vertices[0].forEach((coord: any) => {
+                        coord.x = coord.x * (1 + this.growthRate);  // Grow the cell according to the plant's growth rate
+                        coord.y = coord.y * (1 + this.growthRate);
+
+                        if (coord.x > this.potInstance.topWidth) {
+                            this.matureFlag = true;
+                        }
+                    });
+
+                    console.log(item.vertices[0]);
+                    const grownCell = Matter.Bodies.fromVertices(plant.position.x, plant.position.y - this.potInstance.baseHeight / 2 + (item.vertices[0][0].y) / 3, item.vertices, {
+                        render: {
+                            fillStyle: item.colour, // NOTE: add dynamic colour here (interp between new growth and mature colour)
+                        }
+                    });
+
+                    bodyList.push(grownCell);
+                });
+
+                grownPlant = this.create(false, bodyList, [plant.position.x, plant.position.y]);
             };
 
+            this.$emit('send-grown', [grownPlant, this.potID, plant.angle, this.matureFlag]);
             this.age += 1;
 
         },
